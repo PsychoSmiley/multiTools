@@ -1,0 +1,73 @@
+:root {
+    --main-bg-color: #1f1f1f;
+    --main-text-color: #f0f0f0;
+    --main-accent-color: #0ac18e;
+    --secondary-accent-color: #06564f;
+}
+
+body {
+    background-color: var(--main-bg-color);
+    color: var(--main-text-color);
+    font-family: 'Arial', sans-serif;
+    transition: all 0.5s ease;
+}
+
+h1 {
+    text-align: center;
+    font-size: 2.5em;
+    margin-bottom: 30px;
+}
+
+.container {
+    width: 80%;
+    margin: auto;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+}
+
+textarea {
+    width: 100%;
+    min-height: 200px;
+    padding: 10px;
+    margin: 10px 0;
+    border: none;
+    border-radius: 10px;
+    background-color: var(--secondary-accent-color);
+    color: var(--main-text-color);
+}
+
+button {
+    padding: 10px 20px;
+    border: none;
+    border-radius: 5px;
+    background-color: var(--main-accent-color);
+    color: var(--main-bg-color);
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+}
+
+button:hover {
+    background-color: var(--secondary-accent-color);
+}
+
+ul {
+    list-style-type: none;
+}
+
+li {
+    margin: 20px 0;
+}
+
+a {
+    text-decoration: none;
+    color: var(--main-accent-color);
+    font-size: 1.5em;
+    transition: color 0.3s ease;
+}
+
+a:hover {
+    color: var(--secondary-accent-color);
+}

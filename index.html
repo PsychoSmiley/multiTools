@@ -1,27 +1,18 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Example Page</title>
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      background-color: lightblue;
-    }
-    h1 {
-      color: darkblue;
-    }
-  </style>
+    <meta charset="UTF-8">
+    <title>My Tools</title>
+    <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-  <h1>Hello, World!</h1>
-  <button onclick="changeColor()">Change Background Color</button>
-
-  <script>
-    function changeColor() {
-      document.body.style.backgroundColor = 'orange';
-    }
-  </script>
+    <h1>My Tools</h1>
+    <ul>
+        {% for page in site.pages %}
+            {% if page.url != '/index.html' %}
+                <li><a href="{{ page.url | relative_url }}">{{ page.title }}</a></li>
+            {% endif %}
+        {% endfor %}
+    </ul>
 </body>
 </html>
