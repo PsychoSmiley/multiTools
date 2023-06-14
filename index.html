@@ -2,17 +2,23 @@
 <html>
 <head>
     <meta charset="UTF-8">
-    <title>My Tools</title>
+    <title>My Cool Tools</title>
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-    <h1>My Tools</h1>
-    <ul>
-        {% for page in site.pages %}
-            {% if page.url != '/index.html' %}
-                <li><a href="{{ page.url | relative_url }}">{{ page.title }}</a></li>
-            {% endif %}
-        {% endfor %}
-    </ul>
+<header>
+<div id="navbar">
+    <h1>Welcome to My Cool Tools!</h1>
+</div>
+</header>
+<main>
+<div id="content">
+    <h2>Coming Soon</h2>
+    <p>We're working hard to bring you some awesome tools. Stay tuned!</p>
+</div>
+</main>
+<footer>
+<p style="text-align: center;"><small>  2023 My Cool Tools</small></p>
+</footer>
 </body>
 </html>
