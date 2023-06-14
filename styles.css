@@ -1,73 +1,53 @@
-:root {
-    --main-bg-color: #1f1f1f;
-    --main-text-color: #f0f0f0;
-    --main-accent-color: #0ac18e;
-    --secondary-accent-color: #06564f;
-}
-
 body {
-    background-color: var(--main-bg-color);
-    color: var(--main-text-color);
-    font-family: 'Arial', sans-serif;
-    transition: all 0.5s ease;
-}
-
-h1 {
-    text-align: center;
-    font-size: 2.5em;
-    margin-bottom: 30px;
+    background: #121212;
+    color: #fff;
+    font-family: Arial, sans-serif;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    margin: 0;
+    background-size: cover;
+    overflow: hidden;
 }
 
 .container {
-    width: 80%;
-    margin: auto;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    min-height: 100vh;
+    perspective: 1000px;
 }
 
-textarea {
-    width: 100%;
-    min-height: 200px;
-    padding: 10px;
-    margin: 10px 0;
-    border: none;
-    border-radius: 10px;
-    background-color: var(--secondary-accent-color);
-    color: var(--main-text-color);
+.card {
+    position: relative;
+    width: 300px;
+    height: 200px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 15px;
+    padding: 15px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+    transition: transform 1s;
+    transform-style: preserve-3d;
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
 }
 
-button {
+    .card:hover {
+        transform: rotateY(180deg);
+    }
+
+.title, .description {
+    backface-visibility: hidden;
+}
+
+.button {
+    display: inline-block;
+    background: #007BFF; /* Changed color to blue */
     padding: 10px 20px;
-    border: none;
     border-radius: 5px;
-    background-color: var(--main-accent-color);
-    color: var(--main-bg-color);
-    cursor: pointer;
-    transition: background-color 0.3s ease;
-}
-
-button:hover {
-    background-color: var(--secondary-accent-color);
-}
-
-ul {
-    list-style-type: none;
-}
-
-li {
-    margin: 20px 0;
-}
-
-a {
+    margin: 5px;
+    color: #fff;
     text-decoration: none;
-    color: var(--main-accent-color);
-    font-size: 1.5em;
-    transition: color 0.3s ease;
+    transition: background 0.5s;
 }
 
-a:hover {
-    color: var(--secondary-accent-color);
-}
+    .button:hover {
+        background: #5d4037;
+    }
