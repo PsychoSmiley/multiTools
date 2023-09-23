@@ -1,14 +1,92 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <meta charset="UTF-8">
-    <title>Image Chunk Edit</title>
-    <link rel="stylesheet" type="text/css" href="ChunkEdit.css">
-    <script src="ChunkEdit.js"></script>
+    <style>
+        body {
+            background-color: black;
+            color: white;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+        #player, #food {
+            position: absolute;
+            width: 50px;
+            height: 50px;
+        }
+        #player {
+            background-color: white;
+            bottom: 0; /* start at the bottom */
+        }
+        #food {
+            background-color: red;
+            transition: left 2s linear;
+        }
+        button, #score, #badScore {
+            position: absolute;
+            top: 10px;
+        }
+        button {
+            left: 10px;
+        }
+        #score {
+            left: 70px;
+        }
+        #badScore {
+            left: 150px;
+        }
+    </style>
 </head>
 <body>
-    <a href="../index.html">Back to Main Page</a>
-    <h1>Welcome to the Image Chunk Edit!</h1>
-    <!-- Add your Image Chunk Edit specific HTML here -->
+    <div id="player"></div>
+    <div id="food"></div>
+    <button id="jumpButton" onclick="jump()">Jump</button>
+    <p id="score">Score: 0</p>
+    <p id="badScore">Bad Score: 0</p>
+
+    <script>
+        var player = document.getElementById('player');
+        var food = document.getElementById('food');
+        var score = document.getElementById('score');
+        var badScore = document.getElementById('badScore');
+        var jumpButton = document.getElementById('jumpButton');
+        var playerJumping = false;
+
+        function jump() {
+            if (!playerJumping) {
+                playerJumping = true;
+                jumpButton.disabled = true; // disable the button
+                player.style.bottom = '100px';
+                setTimeout(function() {
+                    player.style.bottom = '0';
+                    playerJumping = false;
+                    setTimeout(function() { // add cooldown after landing
+                        jumpButton.disabled = false; // enable the button after cooldown
+                    }, 2000); // longer cooldown time
+                }, 500);
+            }
+        }
+
+        function move() {
+            food.style.left = food.style.left === '90%' ? '0' : '90%';
+            setTimeout(function() {
+                if (playerJumping && Math.abs(player.getBoundingClientRect().left - food.getBoundingClientRect().left) < 50) {
+                    score.innerText = 'Score: ' + (parseInt(score.innerText.split(': ')[1]) + 1);
+                } else if (!playerJumping) {
+                    badScore.innerText = 'Bad Score: ' + (parseInt(badScore.innerText.split(': ')[1]) + 1);
+                }
+            }, 1000);
+        }
+
+        setInterval(move, 2000);
+
+        window.addEventListener('keydown', function(e) {
+            if (e.key === 'ArrowUp') {
+                jump();
+            }
+        });
+    </script>
 </body>
 </html>
