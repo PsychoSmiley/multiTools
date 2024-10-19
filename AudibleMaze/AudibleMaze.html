@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Audible Maze</title>
+    <style>
+        body { margin: 0; padding: 0; overflow: hidden; background-color: #000; }
+        #game-container { width: 100vw; height: 100vh; }
+    </style>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/cannon.js/0.6.2/cannon.min.js"></script>
+</head>
+<body>
+    <div id="game-container"></div>
+    <script>
+        class AudibleMaze {
+            constructor() {
+                this.mazeSize = 10;
+                this.cellSize = 1;
+                this.maze = [];
+                this.ball = { x: 0, y: 0 };
+                this.exit = { x: 0, y: 0 };
+                this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                this.oscillator = null;
+                this.rollingSoundGain = this.audioContext.createGain();
+                this.collisionSoundGain = this.audioContext.createGain();
+
+                this.scene = new THREE.Scene();
+                this.camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+                this.renderer = new THREE.WebGLRenderer({ antialias: true });
+                this.renderer.setSize(window.innerWidth, window.innerHeight);
+                document.getElementById('game-container').appendChild(this.renderer.domElement);
+
+                this.world = new CANNON.World();
+                this.world.gravity.set(0, -9.82, 0);
+
+                this.setupScene();
+                this.setupEventListeners();
+                this.startGame();
+            }
+
+            setupScene() {
+                this.scene.background = new THREE.Color(0x000000);
+                this.camera.position.set(0, this.mazeSize * 0.8, this.mazeSize * 0.8);
+                this.camera.lookAt(0, 0, 0);
+
+                const ambientLight = new THREE.AmbientLight(0x404040);
+                this.scene.add(ambientLight);
+
+                const directionalLight = new THREE.DirectionalLight(0xffffff, 0.5);
+                directionalLight.position.set(5, 10, 5);
+                this.scene.add(directionalLight);
+            }
+
+            setupEventListeners() {
+                window.addEventListener('resize', () => this.onWindowResize());
+                window.addEventListener('deviceorientation', (e) => this.handleGyroscope(e));
+                document.addEventListener('keydown', (e) => this.handleKeyboard(e));
+            }
+
+            onWindowResize() {
+                this.camera.aspect = window.innerWidth / window.innerHeight;
+                this.camera.updateProjectionMatrix();
+                this.renderer.setSize(window.innerWidth, window.innerHeight);
+            }
+
+            startGame() {
+                this.generateMaze();
+                this.placeBallAndExit();
+                this.createMazeGeometry();
+                this.createPhysicsBall();
+                this.setupAudio();
+                this.animate();
+            }
+
+            generateMaze() {
+                for (let y = 0; y < this.mazeSize; y++) {
+                    this.maze[y] = [];
+                    for (let x = 0; x < this.mazeSize; x++) {
+                        this.maze[y][x] = 1;
+                    }
+                }
+                const stack = [{x: 1, y: 1}];
+                this.maze[1][1] = 0;
+                while (stack.length > 0) {
+                    const current = stack[stack.length - 1];
+                    const neighbors = this.getUnvisitedNeighbors(current.x, current.y);
+                    if (neighbors.length > 0) {
+                        const next = neighbors[Math.floor(Math.random() * neighbors.length)];
+                        this.maze[next.y][next.x] = 0;
+                        this.maze[current.y + (next.y - current.y) / 2][current.x + (next.x - current.x) / 2] = 0;
+                        stack.push(next);
+                    } else {
+                        stack.pop();
+                    }
+                }
+                for (let i = 0; i < this.mazeSize; i++) {
+                    this.maze[0][i] = 1;
+                    this.maze[this.mazeSize - 1][i] = 1;
+                    this.maze[i][0] = 1;
+                    this.maze[i][this.mazeSize - 1] = 1;
+                }
+            }
+
+            getUnvisitedNeighbors(x, y) {
+                const neighbors = [];
+                const directions = [{x: 0, y: -2}, {x: 2, y: 0}, {x: 0, y: 2}, {x: -2, y: 0}];
+                for (const dir of directions) {
+                    const nx = x + dir.x;
+                    const ny = y + dir.y;
+                    if (nx > 0 && nx < this.mazeSize - 1 && ny > 0 && ny < this.mazeSize - 1 && this.maze[ny][nx] === 1) {
+                        neighbors.push({x: nx, y: ny});
+                    }
+                }
+                return neighbors;
+            }
+
+            placeBallAndExit() {
+                do {
+                    this.ball.x = Math.floor(Math.random() * (this.mazeSize - 2)) + 1;
+                    this.ball.y = Math.floor(Math.random() * (this.mazeSize - 2)) + 1;
+                } while (this.maze[this.ball.y][this.ball.x] !== 0);
+                do {
+                    this.exit.x = Math.floor(Math.random() * (this.mazeSize - 2)) + 1;
+                    this.exit.y = Math.floor(Math.random() * (this.mazeSize - 2)) + 1;
+                } while (this.maze[this.exit.y][this.exit.x] !== 0 || (this.exit.x === this.ball.x && this.exit.y === this.ball.y));
+            }
+
+            createMazeGeometry() {
+                this.scene.children = this.scene.children.filter(child => child.type !== "Mesh" || child.name === "ball");
+                
+                const wallGeometry = new THREE.BoxGeometry(this.cellSize, this.cellSize * 2, this.cellSize);
+                const wallMaterial = new THREE.MeshPhongMaterial({ color: 0x333333 });
+
+                const floorGeometry = new THREE.PlaneGeometry(this.mazeSize * this.cellSize, this.mazeSize * this.cellSize);
+                const floorMaterial = new THREE.MeshPhongMaterial({ color: 0x222222 });
+                const floor = new THREE.Mesh(floorGeometry, floorMaterial);
+                floor.rotation.x = -Math.PI / 2;
+                floor.position.y = -this.cellSize;
+                this.scene.add(floor);
+
+                const floorShape = new CANNON.Plane();
+                const floorBody = new CANNON.Body({ mass: 0 });
+                floorBody.addShape(floorShape);
+                floorBody.quaternion.setFromAxisAngle(new CANNON.Vec3(1, 0, 0), -Math.PI / 2);
+                this.world.addBody(floorBody);
+
+                for (let y = 0; y < this.mazeSize; y++) {
+                    for (let x = 0; x < this.mazeSize; x++) {
+                        if (this.maze[y][x] === 1) {
+                            const wall = new THREE.Mesh(wallGeometry, wallMaterial);
+                            wall.position.set(
+                                (x - this.mazeSize / 2 + 0.5) * this.cellSize,
+                                0,
+                                (y - this.mazeSize / 2 + 0.5) * this.cellSize
+                            );
+                            this.scene.add(wall);
+
+                            const wallShape = new CANNON.Box(new CANNON.Vec3(this.cellSize / 2, this.cellSize, this.cellSize / 2));
+                            const wallBody = new CANNON.Body({ mass: 0 });
+                            wallBody.addShape(wallShape);
+                            wallBody.position.set(
+                                (x - this.mazeSize / 2 + 0.5) * this.cellSize,
+                                0,
+                                (y - this.mazeSize / 2 + 0.5) * this.cellSize
+                            );
+                            this.world.addBody(wallBody);
+                        }
+                    }
+                }
+
+                const exitGeometry = new THREE.BoxGeometry(this.cellSize, this.cellSize / 10, this.cellSize);
+                const exitMaterial = new THREE.MeshPhongMaterial({ color: 0x00ff00 });
+                this.exitMesh = new THREE.Mesh(exitGeometry, exitMaterial);
+                this.exitMesh.position.set(
+                    (this.exit.x - this.mazeSize / 2 + 0.5) * this.cellSize,
+                    -this.cellSize + 0.05,
+                    (this.exit.y - this.mazeSize / 2 + 0.5) * this.cellSize
+                );
+                this.scene.add(this.exitMesh);
+            }
+
+            createPhysicsBall() {
+                const ballRadius = this.cellSize / 2.5;
+                const ballGeometry = new THREE.SphereGeometry(ballRadius, 32, 32);
+                const ballMaterial = new THREE.MeshPhongMaterial({ color: 0xff0000 });
+                this.ballMesh = new THREE.Mesh(ballGeometry, ballMaterial);
+                this.ballMesh.name = "ball";
+                this.scene.add(this.ballMesh);
+
+                const ballShape = new CANNON.Sphere(ballRadius);
+                this.ballBody = new CANNON.Body({
+                    mass: 1,
+                    shape: ballShape,
+                    position: new CANNON.Vec3(
+                        (this.ball.x - this.mazeSize / 2 + 0.5) * this.cellSize,
+                        0,
+                        (this.ball.y - this.mazeSize / 2 + 0.5) * this.cellSize
+                    )
+                });
+                this.world.addBody(this.ballBody);
+
+                this.ballBody.addEventListener("collide", this.playCollisionSound.bind(this));
+            }
+
+            setupAudio() {
+                this.rollingSoundGain.connect(this.audioContext.destination);
+                this.collisionSoundGain.connect(this.audioContext.destination);
+
+                this.oscillator = this.audioContext.createOscillator();
+                this.oscillator.type = 'sine';
+                this.oscillator.connect(this.audioContext.destination);
+                this.oscillator.start();
+            }
+
+            playRollingSound() {
+                const rollingOscillator = this.audioContext.createOscillator();
+                rollingOscillator.type = 'triangle';
+                rollingOscillator.frequency.setValueAtTime(100, this.audioContext.currentTime);
+                rollingOscillator.connect(this.rollingSoundGain);
+                rollingOscillator.start();
+                rollingOscillator.stop(this.audioContext.currentTime + 0.1);
+            }
+
+            playCollisionSound() {
+                const collisionOscillator = this.audioContext.createOscillator();
+                collisionOscillator.type = 'square';
+                collisionOscillator.frequency.setValueAtTime(200, this.audioContext.currentTime);
+                collisionOscillator.connect(this.collisionSoundGain);
+                collisionOscillator.start();
+                collisionOscillator.stop(this.audioContext.currentTime + 0.1);
+            }
+
+            updateAudio() {
+                if (this.oscillator) {
+                    const distance = Math.sqrt(
+                        Math.pow(this.ballBody.position.x / this.cellSize - (this.exit.x - this.mazeSize / 2 + 0.5), 2) +
+                        Math.pow(this.ballBody.position.z / this.cellSize - (this.exit.y - this.mazeSize / 2 + 0.5), 2)
+                    );
+                    const maxDistance = Math.sqrt(Math.pow(this.mazeSize, 2) + Math.pow(this.mazeSize, 2));
+                    const frequency = 200 + (2000 * (1 - distance / maxDistance));
+                    this.oscillator.frequency.setValueAtTime(frequency, this.audioContext.currentTime);
+                }
+
+                if (this.ballBody.velocity.lengthSquared() > 0.1) {
+                    this.playRollingSound();
+                }
+            }
+
+            handleGyroscope(event) {
+                const sensitivity = 2;
+                this.world.gravity.x = event.gamma * sensitivity;
+                this.world.gravity.z = event.beta * sensitivity;
+            }
+
+            handleKeyboard(event) {
+                const force = 10;
+                switch (event.key) {
+                    case 'ArrowUp': this.ballBody.applyForce(new CANNON.Vec3(0, 0, -force), this.ballBody.position); break;
+                    case 'ArrowDown': this.ballBody.applyForce(new CANNON.Vec3(0, 0, force), this.ballBody.position); break;
+                    case 'ArrowLeft': this.ballBody.applyForce(new CANNON.Vec3(-force, 0, 0), this.ballBody.position); break;
+                    case 'ArrowRight': this.ballBody.applyForce(new CANNON.Vec3(force, 0, 0), this.ballBody.position); break;
+                }
+            }
+
+            animate() {
+                requestAnimationFrame(() => this.animate());
+
+                this.world.step(1 / 60);
+
+                this.ballMesh.position.copy(this.ballBody.position);
+                this.ballMesh.quaternion.copy(this.ballBody.quaternion);
+
+                this.renderer.render(this.scene, this.camera);
+                this.updateAudio();
+
+                const exitPosition = new THREE.Vector3(
+                    (this.exit.x - this.mazeSize / 2 + 0.5) * this.cellSize,
+                    -this.cellSize + 0.05,
+                    (this.exit.y - this.mazeSize / 2 + 0.5) * this.cellSize
+                );
+                if (this.ballMesh.position.distanceTo(exitPosition) < this.cellSize / 2) {
+                    this.startGame();
+                }
+            }
+        }
+
+        const game = new AudibleMaze();
+    </script>
+</body>
+</html>
